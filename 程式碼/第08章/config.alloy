@@ -1,0 +1,42 @@
+// 第 8 章：Grafana Alloy 收集管線（取代已 EOL 的 Promtail）
+//
+// 四個元件串成一條輸送帶：
+//   local.file_match → loki.source.file → loki.process → loki.write
+// 分別是：找檔 → 逐行 tail → 解析 JSON 並貼標籤 → 推送給 Loki。
+
+// 一、找出要盯哨的日誌檔，並替這批日誌貼上服務番號 job
+local.file_match "app" {
+  path_targets = [
+    {__path__ = "/var/log/app/*.log", job = "shop-api"},
+  ]
+}
+
+// 二、逐行 tail 上一步找到的檔案，交給 process 處理
+loki.source.file "app" {
+  targets    = local.file_match.app.targets
+  forward_to = [loki.process.app.receiver]
+}
+
+// 三、解析每行 JSON，並把 level（嚴重等級）提升為標籤。
+//     只提升 level 這個「值少而穩」的欄位——endpoint、status 這類
+//     值多的欄位留在日誌內文，第 9 章再用 | json 即時抽取，避免高基數炸掉索引。
+loki.process "app" {
+  stage.json {
+    expressions = {
+      level = "level",
+    }
+  }
+  stage.labels {
+    values = {
+      level = "level",
+    }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// 四、把處理好的日誌推送到 Loki 的接收端點
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

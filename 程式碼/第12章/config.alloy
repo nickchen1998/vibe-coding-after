@@ -1,0 +1,35 @@
+// 第 11 章：本章的日誌收集管線
+//
+// 與第 8、10 章那兩份的設計完全相同，只有 path_targets 指向本章的 logs/。
+// 只把 level 提升為標籤（值少而穩），其餘欄位留在日誌內文——理由詳見第 8、9 章。
+
+local.file_match "app" {
+  path_targets = [
+    {__path__ = "/var/log/app/*.log", job = "shop-api"},
+  ]
+}
+
+loki.source.file "app" {
+  targets    = local.file_match.app.targets
+  forward_to = [loki.process.app.receiver]
+}
+
+loki.process "app" {
+  stage.json {
+    expressions = {
+      level = "level",
+    }
+  }
+  stage.labels {
+    values = {
+      level = "level",
+    }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

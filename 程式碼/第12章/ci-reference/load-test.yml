@@ -1,0 +1,40 @@
+# 第 12 章｜CI 品質門參考範例（GitHub Actions）
+#
+# 本書不實跑這份檔案，它的作用是讓你看見：12.1 那個結束碼，
+# 放進任何一套 CI 都是同一招——CI 只認結束碼，不認工具。
+#
+# 換成 GitLab CI、Jenkins 或其他系統，唯一要改的是 YAML 的語法外殼，
+# 中間那兩行「起靶場、跑 locust」原封不動。
+
+name: 壓測品質門
+
+on: [push, pull_request]
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 安裝相依套件
+        run: pip install fastapi uvicorn locust
+
+      - name: 啟動靶場（背景執行）
+        run: |
+          uvicorn shop_api:app --host 127.0.0.1 --port 8000 &
+          sleep 5
+
+      - name: 壓測品質門
+        env:
+          MAX_AVG_MS: '300'          # 門檻寫在這裡，人人看得見、可被審查
+          MAX_FAIL_RATIO: '0.05'
+          MAX_P95_MS: '800'
+        run: |
+          locust -f locustfile.py --host http://127.0.0.1:8000 \
+                 --headless -u 20 -r 20 -t 60s
+          # locustfile 的 quitting 監聽器會依實測結果設定結束碼，
+          # 非 0 時這一步失敗，整條流水線亮紅燈。

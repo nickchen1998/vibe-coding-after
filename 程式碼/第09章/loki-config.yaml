@@ -1,0 +1,34 @@
+# Loki 精簡單機設定（本機 demo 用，非生產配置）
+# 第 9 章自備一份，內容與第 8 章相同；各欄位意義已於第 8 章詳述。
+# 改編自 Grafana 官方文件的 Loki 部署設定：
+#   https://grafana.com/docs/loki/latest/setup/install/docker/
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /tmp/loki
+  storage:
+    filesystem:
+      chunks_directory: /tmp/loki/chunks
+      rules_directory: /tmp/loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  allow_structured_metadata: true
+  volume_enabled: true

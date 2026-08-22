@@ -1,0 +1,14 @@
+# 開機時自動載入 /var/lib/grafana/dashboards 底下的儀表板 JSON。
+# 這就是「dashboard as code」：儀表板是版控裡的檔案，不是點出來的一次性成果。
+apiVersion: 1
+
+providers:
+  - name: '鐵人商城儀表板'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

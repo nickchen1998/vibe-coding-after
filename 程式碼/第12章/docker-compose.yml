@@ -1,0 +1,59 @@
+# 第 12 章：反哺實驗與 MCP 實測的執行環境
+#
+# 本 compose 一鍵拉起三個服務：
+#   - loki    ：日誌聚合資料庫（LGTM 的 L）
+#   - alloy   ：日誌收集器（Grafana 次世代收集器，取代已 EOL 的 Promtail）
+#   - grafana ：視覺化平台（LGTM 的 G），已預先接好 Loki 資料源
+#
+# 靶場把 JSON 日誌寫到 ./logs/api.log，Alloy 持續 tail 並推送至 Loki；
+# Grafana 開機時自動佈建資料源、黃金儀表板與告警規則（皆為版控中的檔案）。
+#
+# 注意：本堆疊與第 8、10 章那兩份使用同一組埠（3000／3100／12345）。
+# 若那些堆疊還開著，請先到對應目錄執行 docker compose down。
+#
+# 啟動： docker compose up -d
+# 關閉： docker compose down
+
+services:
+  loki:
+    image: grafana/loki:3.7.4
+    container_name: ch12-loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    ports:
+      - "3100:3100"                      # 對外開放 Loki 的 HTTP 埠
+    volumes:
+      - ./loki-config.yaml:/etc/loki/loki-config.yaml:ro
+
+  alloy:
+    image: grafana/alloy:v1.18.0
+    container_name: ch12-alloy
+    command:                             # 啟動 Alloy 並載入設定
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+    ports:
+      - "12345:12345"        # Alloy 內建 Web UI（可視化收集管線）
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - ./logs:/var/log/app:ro           # 靶場寫日誌的資料夾
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:12.4.6
+    container_name: ch12-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      # 管理員帳密一律由環境變數帶入，設定檔裡不留任何憑證。
+      # 啟動前先設定，例如：
+      #     export GRAFANA_ADMIN_PASSWORD='你自己想一組夠長的密碼'
+      # 沒設定的話，下面那個 :? 會讓 docker compose 直接拒絕啟動並提示你——
+      # 這是刻意的：預設密碼是最常見的破口，不該讓它有機會被沿用到正式環境。
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?請先設定 GRAFANA_ADMIN_PASSWORD 環境變數}
+    volumes:
+      - ./grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    depends_on:
+      - loki

@@ -1,0 +1,70 @@
+# 第 11 章：告警規則與聯絡點（alerting as code）
+#
+# 與 dashboard.json 同一個道理——告警規則也是版控裡的檔案，
+# 而不是在網頁上點一點、只存在某個人瀏覽器書籤裡的設定。
+
+apiVersion: 1
+
+# 一、聯絡點：警報要送到哪裡
+contactPoints:
+  - orgId: 1
+    name: 值星官
+    receivers:
+      - uid: sentry-webhook
+        type: webhook
+        settings:
+          url: http://host.docker.internal:9099/alert
+          httpMethod: POST
+
+# 二、通知政策：所有警報一律路由給值星官
+policies:
+  - orgId: 1
+    receiver: 值星官
+    group_by: ['alertname']
+    group_wait: 10s
+    group_interval: 30s
+    repeat_interval: 4h
+
+# 三、告警規則
+groups:
+  - orgId: 1
+    name: 鐵人商城值夜規則
+    folder: 告警
+    interval: 30s
+    rules:
+      - uid: p99-latency-high
+        title: P99 延遲過高
+        condition: THRESHOLD
+        for: 1m                     # 條件成立後還要撐滿 1 分鐘才真的開火
+        annotations:
+          summary: 鐵人商城的 P99 延遲已超過 500 毫秒
+          description: 連續一分鐘 P99 延遲高於門檻，請先看儀表板的飽和度面板確認是不是連線池排隊。
+        labels:
+          severity: warning
+        data:
+          - refId: QUERY
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: loki-ironman
+            model:
+              refId: QUERY
+              expr: quantile_over_time(0.99, {job="shop-api"} | json latency_ms="latency_ms" | unwrap latency_ms [1m]) by (service)
+              queryType: range
+          - refId: LAST
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: LAST
+              type: reduce
+              reducer: last
+              expression: QUERY
+          - refId: THRESHOLD
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: THRESHOLD
+              type: threshold
+              expression: LAST
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [500]

@@ -1,0 +1,46 @@
+// 第 10 章：本章共用的日誌收集管線（四節共用，啟動一次即可）
+//
+// 與第 8 章那份的差別只有一處：path_targets 改用萬用字元，
+// 一次收走本章四節各自 logs/ 目錄下的日誌檔。其餘設計完全相同。
+//
+// 四個元件串成一條輸送帶：
+//   local.file_match → loki.source.file → loki.process → loki.write
+//   找檔 → 逐行 tail → 解析 JSON 並貼標籤 → 推送給 Loki。
+
+// 一、找出本章四節的日誌檔，並替這批日誌貼上服務番號 job
+local.file_match "app" {
+  path_targets = [
+    {__path__ = "/var/log/app/*/logs/*.log", job = "shop-api"},
+  ]
+}
+
+// 二、逐行 tail 上一步找到的檔案，交給 process 處理
+loki.source.file "app" {
+  targets    = local.file_match.app.targets
+  forward_to = [loki.process.app.receiver]
+}
+
+// 三、解析每行 JSON，只把 level（嚴重等級）提升為標籤。
+//     level 只有 INFO／WARN／ERROR 三個值，值少而穩，是完美的標籤；
+//     endpoint、status、request_id 這類值多的欄位一律留在日誌內文，
+//     查詢時再用 | json 即時抽取，避免高基數炸掉索引（理由詳見第 8、9 章）。
+loki.process "app" {
+  stage.json {
+    expressions = {
+      level = "level",
+    }
+  }
+  stage.labels {
+    values = {
+      level = "level",
+    }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// 四、把處理好的日誌推送到 Loki 的接收端點
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

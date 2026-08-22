@@ -1,0 +1,366 @@
+{
+  "uid": "ironman-red",
+  "title": "鐵人商城｜黃金儀表板（RED）",
+  "tags": [
+    "鐵人商城",
+    "RED"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "10s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 5,
+      "title": "攻擊強度：Locust 發側（矛）",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-ironman"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "併發使用者數"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "max_over_time({job=\"shop-api\"} | json | service=\"locust\" | unwrap attack_rps [$__auto]) by (service)",
+          "legendFormat": "發側 RPS"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "max_over_time({job=\"shop-api\"} | json | service=\"locust\" | unwrap attack_users [$__auto]) by (service)",
+          "legendFormat": "併發使用者數"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "title": "R — 流量：每秒請求數（依狀態碼）",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-ironman"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "fillOpacity": 15,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "sum by (status) (rate({job=\"shop-api\"} | json | service=\"shop-api\" [$__auto]))",
+          "legendFormat": "HTTP {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "E — 錯誤：每秒 5xx 與錯誤率",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-ironman"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "錯誤率 (%)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "sum(rate({job=\"shop-api\"} | json | service=\"shop-api\" | status>=500 [$__auto]))",
+          "legendFormat": "5xx / 秒"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "sum(rate({job=\"shop-api\"} | json | service=\"shop-api\" | status>=500 [$__auto])) / sum(rate({job=\"shop-api\"} | json | service=\"shop-api\" [$__auto])) * 100",
+          "legendFormat": "錯誤率 (%)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "D — 延遲：P95 / P99（紅線為 500ms 門檻）",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-ironman"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "quantile_over_time(0.95, {job=\"shop-api\"} | json | service=\"shop-api\" | unwrap latency_ms [$__auto]) by (service)",
+          "legendFormat": "P95"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "quantile_over_time(0.99, {job=\"shop-api\"} | json | service=\"shop-api\" | unwrap latency_ms [$__auto]) by (service)",
+          "legendFormat": "P99"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "S — 飽和度：金流連線池的排隊時間與城內人數",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-ironman"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "城內人數"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "quantile_over_time(0.95, {job=\"shop-api\"} | json | service=\"shop-api\" | unwrap pool_wait_ms [$__auto]) by (service)",
+          "legendFormat": "連線池排隊 P95"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-ironman"
+          },
+          "queryType": "range",
+          "expr": "max_over_time({job=\"shop-api\"} | json | service=\"shop-api\" | unwrap in_flight [$__auto]) by (service)",
+          "legendFormat": "城內人數"
+        }
+      ]
+    }
+  ]
+}

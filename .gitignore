@@ -1,0 +1,40 @@
+# ── 隨書程式碼倉庫 ──────────────────────────────
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+poetry.lock
+
+# 執行後才產生的東西（不進版控）
+程式碼/**/logs/*.log
+程式碼/**/locust_report_*.html
+程式碼/**/attack_*.csv
+程式碼/**/*.db
+程式碼/第10章/django-backoffice/db.sqlite3
+程式碼/第12章/shop.db
+
+# 金鑰：絕不提交
+.env
+.env.*
+
+# 作業系統與編輯器
+.DS_Store
+.idea/
+.vscode/
+
+# ── 書稿工作區（留在本機，不進這個公開倉庫）──────
+章節/
+圖檔/
+圖片原始檔/
+工具/
+CLAUDE.md
+參考書排版規範.md
+參考內文撰寫方法及排版.pdf
+第10章-表說待補.md
+程式碼上GitHub盤點.md
+*.docx
+~$*.docx
+.claude/

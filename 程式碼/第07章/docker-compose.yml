@@ -1,0 +1,15 @@
+# 第 7 章鐵人商城的 PostgreSQL 靶場。一行 docker compose up -d 拉起。
+services:
+  ch7pg:
+    image: postgres:16
+    container_name: ch7pg
+    environment:
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: shop
+    ports:
+      - "55432:5432"        # 對外 55432，避開本機既有的 5432
+    volumes:
+      - ch7pgdata:/var/lib/postgresql/data
+
+volumes:
+  ch7pgdata:
